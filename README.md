@@ -1,4 +1,4 @@
-# 🌱 HabitFlow — Build Better Habits, One Day at a Time
+# 🌱 Streakies — Build Better Habits, One Day at a Time
 
 > A beautifully designed, AI-powered habit tracker that helps you build lasting routines, stay accountable, and celebrate every win — big or small.
 <img width="1796" height="970" alt="image" src="https://github.com/user-attachments/assets/3dc07a7d-cda9-4cf3-bba1-3d3bf562c81a" />
@@ -131,14 +131,11 @@ The project is broken into 4 phases to keep development focused and shippable:
 | Layer | Technology |
 |---|---|
 | Frontend | Vanilla HTML, CSS & JavaScript (no framework, no build step) |
-| Charts | Chart.js (CDN) |
-| Fonts & Icons | Google Fonts (Inter) + Material Symbols |
-| PWA | Web App Manifest + Service Worker (installable, offline-aware caching) |
 | Backend | Node.js (ESM) + Express 5 |
 | Database | MongoDB + Mongoose |
 | Auth | JWT (access + refresh tokens) + bcrypt password hashing |
 | Validation | express-validator |
-| Email | Nodemailer + Mailgen (SMTP via Mailtrap) |
+| Email | sendgrid |
 | Hosting | Vercel |
 | Dev tooling | nodemon |
 
