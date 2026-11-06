@@ -128,19 +128,19 @@ The project is broken into 4 phases to keep development focused and shippable:
 
 ## 🛠️ Tech Stack
 
-> Stack choices are preliminary and subject to change during design phase.
-
 | Layer | Technology |
 |---|---|
-| Mobile Frontend | React Native / Flutter |
-| Web Frontend | React + TailwindCSS |
-| Backend | Node.js + Express / Supabase |
-| Database | PostgreSQL |
-| Auth | Supabase Auth / Firebase Auth |
-| Notifications | Firebase Cloud Messaging |
-| AI Features | OpenAI API / custom ML model |
-| Analytics | Mixpanel / PostHog |
-| Hosting | Vercel (web) + AWS / Railway (backend) |
+| Frontend | Vanilla HTML, CSS & JavaScript (no framework, no build step) |
+| Charts | Chart.js (CDN) |
+| Fonts & Icons | Google Fonts (Inter) + Material Symbols |
+| PWA | Web App Manifest + Service Worker (installable, offline-aware caching) |
+| Backend | Node.js (ESM) + Express 5 |
+| Database | MongoDB + Mongoose |
+| Auth | JWT (access + refresh tokens) + bcrypt password hashing |
+| Validation | express-validator |
+| Email | Nodemailer + Mailgen (SMTP via Mailtrap) |
+| Hosting | Vercel |
+| Dev tooling | nodemon |
 
 ---
 
