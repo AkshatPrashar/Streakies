@@ -16,7 +16,7 @@
 
 ## 📖 About
 
-**HabitFlow** is a cross-platform habit tracking app built for people who want a *simple, rewarding, and smart* way to build consistent routines. Whether you're trying to exercise daily, read more, drink more water, or meditate — HabitFlow helps you track, visualise, and stay motivated from day one.
+**Streakies** is a cross-platform habit tracking app built for people who want a *simple, rewarding, and smart* way to build consistent routines. Whether you're trying to exercise daily, read more, drink more water, or meditate — HabitFlow helps you track, visualise, and stay motivated from day one.
 
 Unlike most habit trackers that feel like a chore, HabitFlow gamifies the experience, provides AI-powered insights, and lets you connect with friends to stay accountable together.
 
