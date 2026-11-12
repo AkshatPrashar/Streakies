@@ -92,7 +92,7 @@ const askGemini = async (systemPrompt, userPrompt, modelName) => {
   if (!apiKey) throw new Error('GEMINI_API_KEY is missing');
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-  const backoffDelaysMs = [1000, 2000, 4000, 8000, 16000];
+  const backoffDelaysMs = [500, 1000, 2000];
 
   for (let attempt = 0; attempt <= backoffDelaysMs.length; attempt++) {
     const response = await fetch(url, {
