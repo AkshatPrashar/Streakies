@@ -81,40 +81,58 @@ app.use('/api/contact', async (req, res, next) => {
 // Contact routes
 app.use('/api/contact', contactRoutes);
 
-// Gemini helper — raw REST call, no SDK dependency.
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Gemini helper — raw REST call, no SDK dependency. Retries the SAME model
+// with exponential backoff on 503 (high demand) / 429 (rate limit) before
+// giving up; any other status (400/401/403/404/etc.) fails immediately
+// since no amount of waiting fixes those.
 const askGemini = async (systemPrompt, userPrompt, modelName) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is missing');
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+  const backoffDelaysMs = [1000, 2000, 4000, 8000, 16000];
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: systemPrompt }] },
-      contents: [{ role: 'user', parts: [{ text: userPrompt }] }]
-    })
-  });
+  for (let attempt = 0; attempt <= backoffDelaysMs.length; attempt++) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }]
+      })
+    });
 
-  if (!response.ok) {
+    if (response.ok) {
+      const data = await response.json();
+      return data.candidates[0].content.parts[0].text;
+    }
+
     const errText = await response.text();
     console.error('Gemini API Error:', errText);
     // Throw an error with the status code attached so we know if we should fallback
     const error = new Error(`Gemini API failed with status ${response.status}: ${errText}`);
     error.status = response.status;
-    throw error;
-  }
 
-  const data = await response.json();
-  return data.candidates[0].content.parts[0].text;
+    const isRetryable = response.status === 503 || response.status === 429;
+    if (!isRetryable || attempt === backoffDelaysMs.length) {
+      throw error;
+    }
+
+    const delay = backoffDelaysMs[attempt] + Math.random() * 500;
+    console.warn(`Model ${modelName} returned ${response.status}. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${backoffDelaysMs.length})...`);
+    await sleep(delay);
+  }
 };
 
-// Tries each model in order, only moving to the next on a 503 (high demand)
-// or 429 (rate limit) — any other status (400/401/403/etc.) is a config or
-// request problem that no fallback model can fix, so it throws immediately.
+// Tries each model in order. askGemini already exhausts backoff retries on
+// 503/429 for a single model, so by the time an error reaches here, only a
+// 404 (model renamed/removed) is worth trying the next model for — anything
+// else (400/401/403, or a 503/429 that survived all retries) throws
+// immediately instead of instantly jumping models.
 const generateWithFallback = async (systemPrompt, userPrompt) => {
-  const models = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-pro-latest'];
+  const models = ['gemini-3.8-flash', 'gemini-flash-latest'];
 
   let lastError = null;
 
@@ -125,8 +143,8 @@ const generateWithFallback = async (systemPrompt, userPrompt) => {
     } catch (err) {
       lastError = err;
 
-      if (err.status === 503 || err.status === 429) {
-        console.warn(`Model ${model} failed with ${err.status}. Trying next fallback...`, err.message);
+      if (err.status === 404) {
+        console.warn(`Model ${model} not found. Trying next fallback...`, err.message);
         continue;
       }
 
