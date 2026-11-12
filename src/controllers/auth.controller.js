@@ -105,8 +105,12 @@ export const register = asyncHandler(async (req, res) => {
 
     const verificationLink = `${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email?token=${unHashedToken}`;
     console.log('📝 Register: Sending verification email...');
-    await sendVerificationEmail(email, verificationLink);
-    console.log('📝 Register: Email sent');
+    try {
+      await sendVerificationEmail(email, verificationLink);
+      console.log('📝 Register: Email sent');
+    } catch (err) {
+      console.error('Email delivery failed:', err.message);
+    }
 
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
@@ -179,7 +183,11 @@ export const login = asyncHandler(async (req, res) => {
   const { accessToken, refreshToken } = await issueAuthTokens(user);
   await user.save();
 
-  await sendLoginNotificationEmail(user.email);
+  try {
+    await sendLoginNotificationEmail(user.email);
+  } catch (err) {
+    console.error('Email delivery failed:', err.message);
+  }
 
   res.status(200).json(
     new ApiResponse(200, { accessToken, refreshToken, user: { _id: user._id, email: user.email, username: user.username } }, 'Login successful')
@@ -197,7 +205,11 @@ export const logout = asyncHandler(async (req, res) => {
   if (userId) {
     const user = await User.findById(userId);
     if (user) {
-      await sendLogoutNotificationEmail(user.email);
+      try {
+        await sendLogoutNotificationEmail(user.email);
+      } catch (err) {
+        console.error('Email delivery failed:', err.message);
+      }
     }
   }
 
@@ -251,7 +263,11 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   await user.save();
 
   const resetLink = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password?token=${unHashedToken}`;
-  await sendForgotPasswordEmail(email, resetLink);
+  try {
+    await sendForgotPasswordEmail(email, resetLink);
+  } catch (err) {
+    console.error('Email delivery failed:', err.message);
+  }
 
   res.status(200).json(new ApiResponse(200, null, 'Password reset link sent to your email'));
 });

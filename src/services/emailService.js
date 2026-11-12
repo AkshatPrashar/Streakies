@@ -13,21 +13,15 @@ const mailgen = new Mailgen({
 let transporter = null;
 
 const getTransporter = () => {
-  console.log('📧 Mailtrap Config:');
-  console.log('  Host:', process.env.MAILTRAP_SMTP_HOST);
-  console.log('  Port:', process.env.MAILTRAP_SMTP_PORT);
-  console.log('  User:', process.env.MAILTRAP_SMTP_USER ? '✓' : '❌ Missing');
-  console.log('  Pass:', process.env.MAILTRAP_SMTP_PASS ? '✓' : '❌ Missing');
-
   if (!transporter) {
     transporter = nodemailer.createTransport({
-      host: process.env.MAILTRAP_SMTP_HOST,
-      port: Number(process.env.MAILTRAP_SMTP_PORT),
+      host: process.env.MAIL_HOST,
+      port: Number(process.env.MAIL_PORT),
       secure: false,
       requireTLS: true,
       auth: {
-        user: process.env.MAILTRAP_SMTP_USER,
-        pass: process.env.MAILTRAP_SMTP_PASS,
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
       },
     });
   }
@@ -51,7 +45,7 @@ export const sendVerificationEmail = async (email, verificationLink) => {
   });
 
   const mailOptions = {
-    from: process.env.MAILTRAP_FROM_EMAIL,
+    from: process.env.MAIL_FROM,
     to: email,
     subject: 'Email Verification - Streakies',
     html: emailBody,
@@ -77,7 +71,7 @@ export const sendForgotPasswordEmail = async (email, resetLink) => {
   });
 
   const mailOptions = {
-    from: process.env.MAILTRAP_FROM_EMAIL,
+    from: process.env.MAIL_FROM,
     to: email,
     subject: 'Password Reset - Streakies',
     html: emailBody,
@@ -103,7 +97,7 @@ export const sendLoginNotificationEmail = async (email) => {
   });
 
   const mailOptions = {
-    from: process.env.MAILTRAP_FROM_EMAIL,
+    from: process.env.MAIL_FROM,
     to: email,
     subject: 'Login Notification - Streakies',
     html: emailBody,
@@ -121,7 +115,7 @@ export const sendLogoutNotificationEmail = async (email) => {
   });
 
   const mailOptions = {
-    from: process.env.MAILTRAP_FROM_EMAIL,
+    from: process.env.MAIL_FROM,
     to: email,
     subject: 'Logout Notification - Streakies',
     html: emailBody,
@@ -131,9 +125,9 @@ export const sendLogoutNotificationEmail = async (email) => {
 };
 
 // Recipient is the app owner's inbox. Set CONTACT_EMAIL in the deployment
-// environment; falls back to MAILTRAP_FROM_EMAIL if unset.
+// environment; falls back to MAIL_FROM if unset.
 export const sendContactEmail = async (userEmail, userName, message) => {
-  const recipient = process.env.CONTACT_EMAIL || process.env.MAILTRAP_FROM_EMAIL;
+  const recipient = process.env.CONTACT_EMAIL || process.env.MAIL_FROM;
 
   const emailBody = mailgen.generate({
     body: {
@@ -147,7 +141,7 @@ export const sendContactEmail = async (userEmail, userName, message) => {
   });
 
   const mailOptions = {
-    from: process.env.MAILTRAP_FROM_EMAIL,
+    from: process.env.MAIL_FROM,
     to: recipient,
     replyTo: userEmail,
     subject: `[Streakies Contact] Message from ${userName}`,
