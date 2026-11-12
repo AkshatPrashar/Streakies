@@ -114,7 +114,7 @@ const askGemini = async (systemPrompt, userPrompt, modelName) => {
 // or 429 (rate limit) — any other status (400/401/403/etc.) is a config or
 // request problem that no fallback model can fix, so it throws immediately.
 const generateWithFallback = async (systemPrompt, userPrompt) => {
-  const models = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.5-pro'];
+  const models = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-pro-latest'];
 
   let lastError = null;
 
