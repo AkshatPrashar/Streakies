@@ -1,6 +1,6 @@
 # 🌱 Streakies — Build Better Habits, One Day at a Time
 
-> A beautifully designed, AI-powered habit tracker that helps you build lasting routines, stay accountable, and celebrate every win — big or small.
+> A beautifully designed habit tracker that helps you build lasting routines, stay accountable, and celebrate every win — big or small.
 <img width="1796" height="970" alt="image" src="https://github.com/user-attachments/assets/3dc07a7d-cda9-4cf3-bba1-3d3bf562c81a" />
 
 <img width="1919" height="973" alt="image" src="https://github.com/user-attachments/assets/49888da5-77cd-482c-8058-5039bce88cb7" />
@@ -16,9 +16,9 @@
 
 ## 📖 About
 
-**Streakies** is a cross-platform habit tracking app built for people who want a *simple, rewarding, and smart* way to build consistent routines. Whether you're trying to exercise daily, read more, drink more water, or meditate — HabitFlow helps you track, visualise, and stay motivated from day one.
+**Streakies** is a habit tracking app built for people who want a *simple, rewarding* way to build consistent routines. Whether you're trying to exercise daily, read more, drink more water, or meditate — Streakies helps you track, visualise, and stay motivated from day one.
 
-Unlike most habit trackers that feel like a chore, HabitFlow gamifies the experience, provides AI-powered insights, and lets you connect with friends to stay accountable together.
+Unlike most habit trackers that feel like a chore, Streakies gamifies the experience with streaks and a daily coach, and lets you connect with friends to stay accountable together.
 
 ---
 
@@ -54,11 +54,11 @@ Unlike most habit trackers that feel like a chore, HabitFlow gamifies the experi
 - Public leaderboards (opt-in)
 - Share your progress card to social media
 
-### 🤖 AI-Powered Features
-- Smart habit suggestions based on your goals
-- Optimal check-in time recommendations using your behaviour patterns
-- Mood–habit correlation analysis
-- AI coach prompts when you're about to break a streak
+### 🤖 Streak Coach
+- Daily coach card with a rotating motivational message
+- Built-in chat that answers questions about your streaks, stats, and habits that need attention
+- Quick habit-building tips on request
+- Rule-based today — no external AI model, so it always responds instantly and never costs anything to run
 
 ### 💚 Wellbeing & Mental Health
 - Daily mood check-in tied to your habits
@@ -131,11 +131,14 @@ The project is broken into 4 phases to keep development focused and shippable:
 | Layer | Technology |
 |---|---|
 | Frontend | Vanilla HTML, CSS & JavaScript (no framework, no build step) |
+| Charts | Chart.js (CDN) |
+| Fonts & Icons | Google Fonts (Inter) + Material Symbols |
+| PWA | Web App Manifest + Service Worker (installable, offline-aware caching) |
 | Backend | Node.js (ESM) + Express 5 |
 | Database | MongoDB + Mongoose |
 | Auth | JWT (access + refresh tokens) + bcrypt password hashing |
 | Validation | express-validator |
-| Email | sendgrid |
+| Email | Nodemailer + Mailgen (SMTP via Brevo) |
 | Hosting | Vercel |
 | Dev tooling | nodemon |
 
@@ -147,7 +150,7 @@ The project is broken into 4 phases to keep development focused and shippable:
 
 **2. Celebrate progress, not perfection** — Missing one day is okay. The app never punishes, always encourages.
 
-**3. Smart without being creepy** — AI insights feel helpful, not intrusive. Privacy is a first-class feature.
+**3. Smart without being creepy** — Coaching feels helpful, not intrusive. Privacy is a first-class feature.
 
 **4. Built for humans** — Accessible, inclusive design. Supports multiple languages from day one.
 
