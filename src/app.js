@@ -81,127 +81,124 @@ app.use('/api/contact', async (req, res, next) => {
 // Contact routes
 app.use('/api/contact', contactRoutes);
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-// Gemini helper — raw REST call, no SDK dependency. Retries the SAME model
-// with exponential backoff on 503 (high demand) / 429 (rate limit) before
-// giving up; any other status (400/401/403/404/etc.) fails immediately
-// since no amount of waiting fixes those.
-const askGemini = async (systemPrompt, userPrompt, modelName) => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY is missing');
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-  const backoffDelaysMs = [500, 1000, 2000];
-
-  for (let attempt = 0; attempt <= backoffDelaysMs.length; attempt++) {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: 'user', parts: [{ text: userPrompt }] }]
-      })
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return data.candidates[0].content.parts[0].text;
-    }
-
-    const errText = await response.text();
-    console.error('Gemini API Error:', errText);
-    // Throw an error with the status code attached so we know if we should fallback
-    const error = new Error(`Gemini API failed with status ${response.status}: ${errText}`);
-    error.status = response.status;
-
-    const isRetryable = response.status === 503 || response.status === 429;
-    if (!isRetryable || attempt === backoffDelaysMs.length) {
-      throw error;
-    }
-
-    const delay = backoffDelaysMs[attempt] + Math.random() * 500;
-    console.warn(`Model ${modelName} returned ${response.status}. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${backoffDelaysMs.length})...`);
-    await sleep(delay);
+function formatStreakAnalysis(streakData) {
+  if (!streakData || streakData.length === 0) {
+    return "📊 You haven't created any streaks yet! Start by adding a habit to track.";
   }
-};
+  let analysis = "📊 Your Streak Analysis\n\n";
+  streakData.forEach(streak => {
+    analysis += `✓ ${streak.name || 'Unnamed'}\n  Current: ${streak.currentStreak || 0} days | Best: ${streak.longestStreak || 0} days\n\n`;
+  });
+  return analysis;
+}
 
-// Tries each model in order. askGemini already exhausts backoff retries on
-// 503/429 for a single model, so by the time an error reaches here, only a
-// 404 (model renamed/removed) is worth trying the next model for — anything
-// else (400/401/403, or a 503/429 that survived all retries) throws
-// immediately instead of instantly jumping models.
-const generateWithFallback = async (systemPrompt, userPrompt) => {
-  const models = ['gemini-3.8-flash', 'gemini-flash-latest'];
+function formatLackingHabits(streakData) {
+  if (!streakData || streakData.length === 0) {
+    return "🎯 No habits yet. Create your first habit to start tracking!";
+  }
+  const lacking = streakData.filter(s => (s.currentStreak || 0) < 3);
+  if (lacking.length === 0) {
+    return "🔥 Amazing! All your habits are going strong. Keep the momentum!";
+  }
+  let message = "⚠️ Habits That Need Attention\n\n";
+  lacking.forEach(streak => {
+    message += `• ${streak.name || 'Unnamed'} (${streak.currentStreak || 0} days)\n`;
+  });
+  message += "\n💪 Focus on these and get them back on track!";
+  return message;
+}
 
-  let lastError = null;
+function formatStats(streakData) {
+  if (!streakData || streakData.length === 0) {
+    return "📈 No stats yet. Create a habit and start tracking!";
+  }
+  const totalStreaks = streakData.length;
+  const activeStreaks = streakData.filter(s => (s.currentStreak || 0) > 0).length;
+  const bestStreak = Math.max(...streakData.map(s => s.longestStreak || 0));
+  const totalDays = streakData.reduce((sum, s) => sum + (s.currentStreak || 0), 0);
+  return `📈 Your Habit Statistics\n\n` +
+    `Total Habits: ${totalStreaks}\n` +
+    `Active Streaks: ${activeStreaks}\n` +
+    `Best Streak Ever: ${bestStreak} days\n` +
+    `Total Active Days: ${totalDays}\n\n` +
+    `Keep building momentum! 🚀`;
+}
 
-  for (const model of models) {
-    try {
-      console.log(`Attempting generation with ${model}...`);
-      return await askGemini(systemPrompt, userPrompt, model);
-    } catch (err) {
-      lastError = err;
+async function handleChatRequest(body) {
+  const messages = body.messages || [];
+  const streakData = body.streakData || [];
+  const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+  const userText = lastUserMessage?.text?.toLowerCase().trim() || '';
 
-      if (err.status === 404) {
-        console.warn(`Model ${model} not found. Trying next fallback...`, err.message);
-        continue;
-      }
-
-      throw err;
-    }
+  const greetings = ['hi', 'hello', 'hey', 'start', 'help', 'menu', 'what can you do'];
+  if (greetings.some(g => userText.includes(g))) {
+    return {
+      reply: `Hey there! 👋 I'm your Streak Coach. What would you like to know?\n\n📊 Streaks Analysis - See all your habits and their current streaks\n🎯 Where You Lack - Find habits that need attention\n📈 Your Stats - View detailed streak statistics\n🏆 Motivation - Get an inspiring message\n💡 Tips - Get habit-building tips`
+    };
   }
 
-  throw lastError || new Error('All models failed');
-};
+  if (userText.includes('streaks') || userText.includes('analysis')) {
+    return { reply: formatStreakAnalysis(streakData) };
+  }
+
+  if (userText.includes('lack') || userText.includes('attention')) {
+    return { reply: formatLackingHabits(streakData) };
+  }
+
+  if (userText.includes('stats') || userText.includes('statistics')) {
+    return { reply: formatStats(streakData) };
+  }
+
+  if (userText.includes('motivation') || userText.includes('inspiring')) {
+    const motivations = [
+      "🔥 Every day is a new opportunity to build momentum. Keep that streak alive!",
+      "💪 You're crushing it! Consistency is the secret to success.",
+      "⚡ Small steps lead to big wins. Keep going!",
+      "🎯 Focus on today. That's all that matters.",
+      "🏅 You've got this! Your future self will thank you."
+    ];
+    const motivation = motivations[Math.floor(Math.random() * motivations.length)];
+    return { reply: motivation };
+  }
+
+  if (userText.includes('tip') || userText.includes('advice')) {
+    const tips = [
+      "💡 Start small: Don't try to change everything at once. Pick one habit and master it.",
+      "📅 Track consistently: Record your progress daily. Visual progress is powerful!",
+      "🔄 Make it automatic: Link your habit to an existing routine (habit stacking).",
+      "📊 Celebrate wins: Every streak milestone deserves recognition!",
+      "⏰ Pick a time: Do your habit at the same time daily for better results."
+    ];
+    const tip = tips[Math.floor(Math.random() * tips.length)];
+    return { reply: tip };
+  }
+
+  return {
+    reply: "I didn't quite understand that. Try asking about Streaks Analysis, Where You Lack, Your Stats, Motivation, or Tips!"
+  };
+}
 
 // Chatbot routes
 app.post('/api/chat', async (req, res) => {
   try {
-    const { messages, streakData } = req.body;
-
-    if (!messages || messages.length === 0) {
-      return res.status(400).json({ reply: 'No messages provided.' });
-    }
-
-    // Format the conversation history for Gemini
-    // The frontend uses role: 'user' or 'ai', and field 'text'
-    const conversationString = messages.slice(-6).map(m =>
-      `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`
-    ).join('\n');
-
-    const systemPrompt = `You are the Streakies AI Coach. You help users build habits. Here is the user's current habit data: ${JSON.stringify(streakData || [])}. Answer their questions concisely, motivationally, and directly. Keep responses under 3 paragraphs. Do not use markdown formatting.`;
-
-    const aiResponse = await generateWithFallback(systemPrompt, conversationString);
-
-    res.json({ reply: aiResponse });
+    const reply = await handleChatRequest(req.body);
+    res.json(reply);
   } catch (err) {
     console.error('Chat API error:', err);
-    res.status(500).json({ reply: "I'm having trouble thinking right now. Please try again in a moment!" });
+    res.status(500).json({ reply: 'Something went wrong. Please try again!' });
   }
 });
 
-app.post('/api/coach', async (req, res) => {
-  const { streaks } = req.body;
-
-  if (!streaks || streaks.length === 0) {
-    return res.json({ message: "Create your first habit to get personalized AI coaching!" });
-  }
-
-  const systemPrompt = "You are the Streakies AI Coach. Analyze the user's habit data and give a short, encouraging, 2-sentence summary of their progress. Be motivational but brief. Do not use markdown.";
-  const userPrompt = `Here is my current habit data: ${JSON.stringify(streaks)}`;
-
-  try {
-    const aiResponse = await generateWithFallback(systemPrompt, userPrompt);
-    res.json({ message: aiResponse });
-  } catch (err) {
-    // Fallback to static motivation if API fails
-    const motivations = [
-      "🔥 Every day is a new opportunity to build momentum. Keep that streak alive!",
-      "💪 You're crushing it! Consistency is the secret to success."
-    ];
-    res.json({ message: motivations[Math.floor(Math.random() * motivations.length)] });
-  }
+app.post('/api/coach', (req, res) => {
+  const motivations = [
+    "🔥 Every day is a new opportunity to build momentum. Keep that streak alive!",
+    "💪 You're crushing it! Consistency is the secret to success.",
+    "⚡ Small steps lead to big wins. Keep going!",
+    "🎯 Focus on today. That's all that matters.",
+    "🏅 You've got this! Your future self will thank you."
+  ];
+  const message = motivations[Math.floor(Math.random() * motivations.length)];
+  res.json({ message });
 });
 
 app.get('/', (req, res) => {

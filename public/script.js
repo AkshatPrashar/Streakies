@@ -2621,11 +2621,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         p.textContent = coachMessage ? coachMessage : "Thinking...";
         aiCard.appendChild(p);
 
-        const label = document.createElement('div');
-        label.className = 'ai-label';
-        label.textContent = 'Powered by Gemini';
-        aiCard.appendChild(label);
-
         messagesContainer.appendChild(aiCard);
 
         if (!coachMessage) {
