@@ -82,11 +82,11 @@ app.use('/api/contact', async (req, res, next) => {
 app.use('/api/contact', contactRoutes);
 
 // Gemini helper — raw REST call, no SDK dependency.
-const askGemini = async (systemPrompt, userPrompt) => {
+const askGemini = async (systemPrompt, userPrompt, modelName) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is missing');
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
   const response = await fetch(url, {
     method: 'POST',
@@ -100,11 +100,41 @@ const askGemini = async (systemPrompt, userPrompt) => {
   if (!response.ok) {
     const errText = await response.text();
     console.error('Gemini API Error:', errText);
-    throw new Error('Gemini API failed');
+    // Throw an error with the status code attached so we know if we should fallback
+    const error = new Error(`Gemini API failed with status ${response.status}: ${errText}`);
+    error.status = response.status;
+    throw error;
   }
 
   const data = await response.json();
   return data.candidates[0].content.parts[0].text;
+};
+
+// Tries each model in order, only moving to the next on a 503 (high demand)
+// or 429 (rate limit) — any other status (400/401/403/etc.) is a config or
+// request problem that no fallback model can fix, so it throws immediately.
+const generateWithFallback = async (systemPrompt, userPrompt) => {
+  const models = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.5-pro'];
+
+  let lastError = null;
+
+  for (const model of models) {
+    try {
+      console.log(`Attempting generation with ${model}...`);
+      return await askGemini(systemPrompt, userPrompt, model);
+    } catch (err) {
+      lastError = err;
+
+      if (err.status === 503 || err.status === 429) {
+        console.warn(`Model ${model} failed with ${err.status}. Trying next fallback...`, err.message);
+        continue;
+      }
+
+      throw err;
+    }
+  }
+
+  throw lastError || new Error('All models failed');
 };
 
 // Chatbot routes
@@ -124,12 +154,12 @@ app.post('/api/chat', async (req, res) => {
 
     const systemPrompt = `You are the Streakies AI Coach. You help users build habits. Here is the user's current habit data: ${JSON.stringify(streakData || [])}. Answer their questions concisely, motivationally, and directly. Keep responses under 3 paragraphs. Do not use markdown formatting.`;
 
-    const aiResponse = await askGemini(systemPrompt, conversationString);
+    const aiResponse = await generateWithFallback(systemPrompt, conversationString);
 
     res.json({ reply: aiResponse });
   } catch (err) {
     console.error('Chat API error:', err);
-    res.status(500).json({ reply: "I'm having trouble connecting to my brain right now. Please try again in a moment!" });
+    res.status(500).json({ reply: "I'm having trouble thinking right now. Please try again in a moment!" });
   }
 });
 
@@ -144,7 +174,7 @@ app.post('/api/coach', async (req, res) => {
   const userPrompt = `Here is my current habit data: ${JSON.stringify(streaks)}`;
 
   try {
-    const aiResponse = await askGemini(systemPrompt, userPrompt);
+    const aiResponse = await generateWithFallback(systemPrompt, userPrompt);
     res.json({ message: aiResponse });
   } catch (err) {
     // Fallback to static motivation if API fails
